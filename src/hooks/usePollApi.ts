@@ -30,15 +30,49 @@ const usePollApi = ({
   const fetchApi = useCallback(async () => {
     if (!url) return
 
-    const { data } = await axios({
-      method,
-      url,
-      headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
-      params,
-      data: payload,
-    })
+    // Fix for Error 414 URI Too Long
+    // Add pagination for validatorInfo
+    if (key == 'validatorInfo') {
+      const pageSize = 300
+      const keys = params?.id.split(',')
+      let allData: any = {}
 
-    return data
+      for (let i = 0; i < keys.length; i += pageSize) {
+        // Make new params
+        params = {
+          id: keys
+            .slice(i, i + pageSize)
+            .map((validator: string) => validator)
+            .join(','),
+        }
+
+        const { data } = await axios({
+          method,
+          url,
+          headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
+          params,
+          data: payload,
+        })
+
+        if (i == 0) {
+          allData = data
+        } else if (data && data.data) {
+          allData.data = [...allData.data, ...data.data]
+        }
+      }
+
+      return allData
+    } else {
+      const { data } = await axios({
+        method,
+        url,
+        headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
+        params,
+        data: payload,
+      })
+
+      return data
+    }
   }, [url, method, apiToken, params, payload])
 
   const { data } = useQuery(key, fetchApi, {
